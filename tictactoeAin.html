@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Image Tic Tac Toe</title>
+
+<style>
+
+body{
+font-family:Arial;
+background:#1e1e2f;
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+margin:0;
+color:white;
+}
+
+.container{
+text-align:center;
+}
+
+/* START SCREEN */
+
+.start-screen input, select{
+padding:10px;
+margin:6px;
+border-radius:6px;
+border:none;
+}
+
+.start-screen button{
+padding:10px 20px;
+border:none;
+border-radius:8px;
+background:#ff9800;
+color:white;
+cursor:pointer;
+}
+
+/* SCOREBOARD */
+
+.scoreboard{
+display:flex;
+justify-content:center;
+gap:40px;
+margin:10px 0;
+font-size:18px;
+background-color: #2f2f4f;
+padding: 1rem;
+border-radius: 10px;
+}
+
+/* BOARD */
+
+.board{
+display:grid;
+grid-template-columns:repeat(3,100px);
+grid-template-rows:repeat(3,100px);
+gap:8px;
+justify-content:center;
+margin-top:10px;
+}
+
+.cell{
+background:#2f2f4f;
+border-radius:10px;
+display:flex;
+justify-content:center;
+align-items:center;
+cursor:pointer;
+}
+
+.cell:hover{
+background:#40406a;
+}
+
+.cell img{
+width:80%;
+height:80%;
+object-fit:contain;
+animation:pop .2s ease;
+}
+
+@keyframes pop{
+from{transform:scale(.3);opacity:0;}
+to{transform:scale(1);opacity:1;}
+}
+
+.winning{
+background:#4CAF50 !important;
+}
+
+/* BUTTON */
+
+button.restart{
+margin-top:15px;
+padding:10px 20px;
+border:none;
+border-radius:8px;
+background:#ff9800;
+color:white;
+cursor:pointer;
+}
+
+/* POPUP */
+
+.popup{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,.6);
+display:flex;
+justify-content:center;
+align-items:center;
+visibility:hidden;
+}
+
+.popup.active{
+visibility:visible;
+}
+
+.popup-box{
+background:#2f2f4f;
+padding:30px;
+border-radius:12px;
+text-align:center;
+}
+
+.popup-box button{
+margin-top:10px;
+padding:10px 20px;
+border:none;
+border-radius:8px;
+background:#ff9800;
+color:white;
+}
+
+.status{
+margin-top:10px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<!-- START SCREEN -->
+
+<div class="start-screen" id="startScreen">
+
+<input id="player1" placeholder="Player 1 name"><br>
+
+<input id="player2" placeholder="Player 2 name"><br>
+
+<select id="bestOf">
+<option value="3">Best of 3</option>
+<option value="5">Best of 5</option>
+<option value="10">Best of 10</option>
+</select><br>
+
+<button onclick="startGame()">Start Game</button>
+
+</div>
+
+<!-- GAME AREA -->
+
+<div id="gameArea" style="display:none;">
+  
+<div class="status" id="status"></div>
+
+<div class="scoreboard">
+<div id="score1">Player1 : 0</div>
+<div id="score2">Player2 : 0</div>
+</div>
+
+<div class="board" id="board"></div>
+
+<button class="restart" onclick="restartMatch()">Restart Match</button>
+
+</div>
+
+</div>
+
+<!-- POPUP -->
+
+<div class="popup" id="popup">
+<div class="popup-box">
+<h2 id="popupText"></h2>
+<button onclick="closePopup()">Continue</button>
+</div>
+</div>
+
+<script>
+
+const board=document.getElementById("board")
+const statusText=document.getElementById("status")
+
+const popup=document.getElementById("popup")
+const popupText=document.getElementById("popupText")
+
+const score1UI=document.getElementById("score1")
+const score2UI=document.getElementById("score2")
+
+let players=["",""]
+
+const images=[
+"img1.jpg",
+"img2.jpg"
+]
+
+let score=[0,0]
+
+let bestOf=3
+let winScore=2
+
+let gameState
+let currentPlayer
+let gameActive
+
+const winConditions=[
+[0,1,2],
+[3,4,5],
+[6,7,8],
+[0,3,6],
+[1,4,7],
+[2,5,8],
+[0,4,8],
+[2,4,6]
+]
+
+function startGame(){
+
+players[0]=document.getElementById("player1").value || "Player 1"
+players[1]=document.getElementById("player2").value || "Player 2"
+
+bestOf=parseInt(document.getElementById("bestOf").value)
+
+winScore=Math.floor(bestOf/2)+1
+
+document.getElementById("startScreen").style.display="none"
+document.getElementById("gameArea").style.display="block"
+
+score=[0,0]
+
+updateScore()
+
+restartRound()
+
+}
+
+function createBoard(){
+
+board.innerHTML=""
+
+for(let i=0;i<9;i++){
+
+const cell=document.createElement("div")
+cell.classList.add("cell")
+cell.dataset.index=i
+
+cell.addEventListener("click",handleMove)
+
+board.appendChild(cell)
+
+}
+
+}
+
+function handleMove(e){
+
+const index=e.target.closest(".cell").dataset.index
+
+if(gameState[index]!=="" || !gameActive) return
+
+gameState[index]=currentPlayer
+
+const img=document.createElement("img")
+img.src=images[currentPlayer]
+
+e.target.closest(".cell").appendChild(img)
+
+checkWinner()
+
+if(gameActive){
+
+currentPlayer=currentPlayer===0?1:0
+
+statusText.textContent=`${players[currentPlayer]}'s turn`
+
+}
+
+}
+
+function checkWinner(){
+
+for(let condition of winConditions){
+
+const[a,b,c]=condition
+
+if(gameState[a]===""||gameState[b]===""||gameState[c]==="") continue
+
+if(gameState[a]===gameState[b] && gameState[b]===gameState[c]){
+
+gameActive=false
+
+document.querySelectorAll(".cell")[a].classList.add("winning")
+document.querySelectorAll(".cell")[b].classList.add("winning")
+document.querySelectorAll(".cell")[c].classList.add("winning")
+
+let winner=gameState[a]
+
+score[winner]++
+
+updateScore()
+
+if(score[winner] >= winScore){
+
+showPopup(`${players[winner]} Wins The Match! 🏆`)
+
+}else{
+
+showPopup(`${players[winner]} Wins This Round!`)
+
+}
+
+return
+
+}
+
+}
+
+if(!gameState.includes("")){
+
+gameActive=false
+
+showPopup("Round Draw!")
+
+}
+
+}
+
+function updateScore(){
+
+score1UI.textContent=`${players[0]} : ${score[0]}`
+score2UI.textContent=`${players[1]} : ${score[1]}`
+
+}
+
+function showPopup(text){
+
+popupText.textContent=text
+popup.classList.add("active")
+
+}
+
+function closePopup(){
+
+popup.classList.remove("active")
+
+if(score[0]>=winScore || score[1]>=winScore){
+
+restartMatch()
+
+}else{
+
+restartRound()
+
+}
+
+}
+
+function restartRound(){
+
+gameState=["","","","","","","","",""]
+currentPlayer=0
+gameActive=true
+
+statusText.textContent=`${players[currentPlayer]}'s turn`
+
+createBoard()
+
+}
+
+function restartMatch(){
+
+score=[0,0]
+updateScore()
+restartRound()
+
+}
+
+</script>
+
+</body>
+</html>
